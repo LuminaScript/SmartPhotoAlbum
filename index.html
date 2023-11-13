@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Homework Assignment Photo Album</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="lib/axios/dist/axios.standalone.js"></script>
+    <script type="text/javascript" src="lib/CryptoJS/rollups/hmac-sha256.js"></script>
+    <script type="text/javascript" src="lib/CryptoJS/rollups/sha256.js"></script>
+    <script type="text/javascript" src="lib/CryptoJS/components/hmac.js"></script>
+    <script type="text/javascript" src="lib/CryptoJS/components/enc-base64.js"></script>
+    <script type="text/javascript" src="lib/url-template/url-template.js"></script>
+    <script type="text/javascript" src="lib/apiGatewayCore/sigV4Client.js"></script>
+    <script type="text/javascript" src="lib/apiGatewayCore/apiGatewayClient.js"></script>
+    <script type="text/javascript" src="lib/apiGatewayCore/simpleHttpClient.js"></script>
+    <script type="text/javascript" src="lib/apiGatewayCore/utils.js"></script>
+    <script type="text/javascript" src="apigClient.js"></script>
+    <script>
+        var apigClient = apigClientFactory.newClient({});
+    </script>
+    <script type="text/javascript">
+    window.SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+
+
+
+
+
+    const synth = window.speechSynthesis;
+    const recognition = new SpeechRecognition();
+    const icon = document.querySelector('i.fa.fa-microphone')
+    
+
+
+    //preview imag
+    function preview() {
+        frame.src=URL.createObjectURL(event.target.files[0]);
+    }
+        
+       
+    // upload photos
+    $(document).ready(function(){
+    
+        $("#upload").click(function(){
+            console.log("uploading!")
+            const image_input = document.getElementById("image_input");
+            var files = image_input.files[0];
+  
+            console.log(files)
+            console.log(files.type)
+            console.log(files.name)
+            
+            upload(files);
+        });
+
+        // after clcik the search button, show the search result
+        $('#search').click(function(){
+            console.log("searching!");
+            const query = document.getElementById("inputbox");
+            params = {q: query.value};
+            console.log(query.value);
+
+            search();
+        
+        });
+    });
+
+
+
+    function getBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => {
+                let encoded = reader.result.toString().replace(/^data:(.*,)?/, '');
+                if ((encoded.length % 4) > 0) {
+                    encoded += '='.repeat(4 - (encoded.length % 4));
+                }
+                resolve(encoded); // This should come after the padding logic
+            };
+            reader.onerror = error => reject(error);
+        });
+    }
+
+    async function upload(file) { 
+        const labels = document.getElementById("labelbox").value; 
+        console.log("Labels: ");
+        console.log(labels);
+        const url = `https://ravijio721.execute-api.us-east-1.amazonaws.com/test-new/upload/6998-photos-b2/${file.name}`;
+
+        const Headers = {
+            "x-api-key": "2DQvMEHMXd4kpEP1Oaih83fpS3H6sMska5laGteK",
+            "x-amz-meta-customLabels": labels,
+            "Content-Type": "text/base64",
+            'Bucket': '6998-photos-b2',
+            'Access-Control-Allow-Origin': '*'
+        }
+
+
+            const base64EncodedFile = await getBase64(file); // 'await' used inside an 'async' function
+
+            // Options for the PUT request
+            const requestOptions = {
+                method: 'PUT',
+                body: base64EncodedFile, 
+                headers: Headers,
+                redirect: 'follow'
+            };
+            fetch(url, requestOptions)
+                .then(response => {
+                    if(response.ok) {
+                        alert(`Your photo with label ${labels} has been uploaded successfully to your Album empowered by AWS!`);
+                    }
+                    return response.text();
+                })
+                .then(result => console.log(result))
+                .catch(error => console.log('error', error));
+
+            $(this).parent(".pip").remove();
+            console.log("check delete")
+
+    }
+async function search() {
+    var searchTerm = document.getElementById("inputbox").value;
+    var apigClient = apigClientFactory.newClient({
+        apiKey: '2DQvMEHMXd4kpEP1Oaih83fpS3H6sMska5laGteK'
+    });
+    var params = {
+        q: searchTerm
+    };
+    var body = {};
+    var additionalParams = {};
+
+    apigClient.searchGet(params, body, additionalParams)
+        .then(async function(result) {
+            console.log('Search successful');
+            var response = JSON.parse(result.data.body);
+            console.log("response", response);
+            var imageKeys = response.urls;
+
+            if (!imageKeys || imageKeys.length === 0) {
+                alert("There are no matching photos right now.");
+                console.log("No photos found");
+                return;
+            }
+
+            // Display The Search Result in another page
+            var newWindow = window.open();
+            newWindow.document.write('<!DOCTYPE html><html><head><title>Search Results</title>');
+            newWindow.document.write('<link href="https://fonts.googleapis.com/css2?family=Cormorant+Infant:ital@1&display=swap" rel="stylesheet">');
+            newWindow.document.write('<style>');
+            newWindow.document.write('body { font-family: "Cormorant Infant", serif; background-color: #f4f7f6; color: #333; }');
+            newWindow.document.write('h1 { color: #6a1b9a; font-style: italic; }');
+            newWindow.document.write('.photo-container { display: flex; flex-wrap: wrap; justify-content: space-around; }');
+            newWindow.document.write('.photo { flex-basis: calc(33% - 20px); margin-bottom: 15px; box-sizing: border-box; padding: 10px; display: flex; flex-direction: column; align-items: center; }');
+            newWindow.document.write('.photo img { max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 5px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }');
+            newWindow.document.write('.photo-info { text-align: center; word-wrap: break-word; }');
+            newWindow.document.write('.photo-info { text-align: center; word-wrap: break-word; }');
+            newWindow.document.write('.photo-info p { margin: 5px 0; }');
+            newWindow.document.write('.photo-info strong { font-weight: bold; }');
+            newWindow.document.write('</style>');
+            newWindow.document.write('</style>');
+            newWindow.document.write('</head><body>');
+            newWindow.document.write('<h1>Search Results</h1>');
+            newWindow.document.write('<div class="photo-container">');
+
+            newWindow.document.write('<script>');
+            newWindow.document.write('function fetchAndDisplayImage(url, elementId) { \
+                fetch(url) \
+                .then(response => response.text()) \
+                .then(base64String => { \
+                    const image = document.getElementById(elementId); \
+                    image.src = "data:image/jpeg;base64," + base64String; \
+                }) \
+                .catch(error => console.error("Error fetching the base64 string:", error)); \
+            }');
+            newWindow.document.write('<\/script>');
+            imageKeys.forEach((url, index) => {
+                var imageName = url.split('/').pop();
+                newWindow.document.write('<div class="photo">');
+                newWindow.document.write('<img id="base64image' + index + '" alt="Base64 Image">');
+                newWindow.document.write('<div class="photo-info">');
+                newWindow.document.write('<p><strong>Name:</strong> ' + imageName + '</p>');
+                newWindow.document.write('<p><strong>S3 Address:</strong> ' + url + '</p>');
+                newWindow.document.write('<p><strong>Label:</strong> ' + searchTerm + '</p>');
+                newWindow.document.write('</div></div>');
+                newWindow.document.write('<script>fetchAndDisplayImage("' + url + '", "base64image' + index + '");<\/script>');
+            });
+
+            newWindow.document.write('</div></body></html>');
+            newWindow.document.close();
+        })
+        .catch(function(result) {
+            console.log("Error in search");
+            console.log(result);
+        });
+}
+
+
+
+    function searchFromVoice(){
+        console.log("speak search start")
+        recognition.start()
+        recognition.onresult = (event) => {
+            const speechToText = event.results[0][0].transcript;
+            console.log(speechToText)
+
+        var apigClient = apigClientFactory.newClient({
+            apiKey: '2DQvMEHMXd4kpEP1Oaih83fpS3H6sMska5laGteK'
+        });
+        var params = {
+            q: speechToText
+        };
+        var body = {
+            
+        };
+
+        var additionalParams = {
+        };
+
+        console.log(speechToText);
+        apigClient.searchGet(params, body, additionalParams)
+        .then(function(result){
+            console.log('success OK');
+            console.log(result)
+            var photos = result.data.body.results;
+            console.log("Photos: ");
+            console.log(photos);
+            var container = document.getElementById("photos");
+
+            for (var i=0, len = photos.length; i < len; ++i) {
+                var img = new Image();
+                img.src = photos[i].url;
+                container.appendChild(img);
+            }
+        })
+        .catch( function(result){
+                console.log("cur")
+                console.log(result.data);})
+
+    }
+
+}
+        
+    </script>
+    <!-- Custom CSS for Italian artistic font and purple color -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Infant:ital@1&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            font-family: 'Cormorant Infant', serif;
+            font-style: italic;
+            color: #6a1b9a; /* Purple color */
+            margin-bottom: 30px;
+        }
+        .search-box {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .search-box input[type="text"],
+        .search-box button,
+        .search-box .voice-search-icon {
+            margin-right: 10px; 
+            height: 40px;
+            border-radius: 5px;
+        }
+        .search-box input[type="text"] {
+            width: 300px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border: 1px solid #ddd;
+            padding: 5px 15px;
+        }
+        .search-box button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .search-box button:hover {
+            background-color: #0056b3;
+        }
+        .voice-search-icon {
+            background-color: transparent;
+            font-size: 24px;
+            padding-left: 10px;
+        }
+        .upload-area {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            margin: 20px auto;
+            width: 350px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .upload-area input[type="text"],
+        .upload-area input[type="file"] {
+            width: calc(100% - 22px);
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .upload-area .upload-button {
+            width: calc(100% - 20px);
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+        }
+        .upload-button:hover {
+            background-color: #218838;
+        }
+        #frame {
+            width: 200px;
+            height: 200px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-top: 10px;
+            background-color: #f8f8f8;
+        }
+        .photo-gallery {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            padding: 20px 0;
+        }
+        .photo-gallery img {
+            width: 200px;
+            height: 200px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Welcome to Your Smart Photo Album!</h1>
+    </div>
+    <div class="search-box">
+        <input type="text" id="inputbox" placeholder="Search...">
+        <button id="search" class="btn">Search</button>
+        <button id="speak_search" class="voice-search-icon" onclick="searchFromVoice()">
+    <i class="fas fa-microphone"></i>
+</button>
+
+    </div>
+
+    <div class="container">
+        <div class="upload-area">
+            <label for="labelbox">Custom Labels:</label>
+            <input type="text" id="labelbox" placeholder="Enter labels...">
+            <input type="file" id="image_input" accept="image/jpg, image/png" onchange="preview()">
+            <button class="upload-button" id="upload">Upload Image</button>
+            <img id="frame" src="" alt="Image preview...">
+        </div>
+    </div>
+
+    <div id="photos" class="photo-gallery">
+        <!-- Photos will be inserted here by JavaScript -->
+    </div>
+    <script>
+    </script>
+</body>
+</html>
+
