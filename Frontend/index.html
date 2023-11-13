@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html leng="en">
+
+    
+<head>
+    <title>Homework Assignment Photo Album</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" crossorigin="anonymous">
+    <script src=https://code.jquery.com/jquery-3.3.1.min.js crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="lib/axios/dist/axios.standalone.js"></script>
+    <script type="text/javascript" src="lib/CryptoJS/rollups/hmac-sha256.js"></script>
+    <script type="text/javascript" src="lib/CryptoJS/rollups/sha256.js"></script>
+    <script type="text/javascript" src="lib/CryptoJS/components/hmac.js"></script>
+    <script type="text/javascript" src="lib/CryptoJS/components/enc-base64.js"></script>
+    <script type="text/javascript" src="lib/url-template/url-template.js"></script>
+    <script type="text/javascript" src="lib/apiGatewayCore/sigV4Client.js"></script>
+    <script type="text/javascript" src="lib/apiGatewayCore/apiGatewayClient.js"></script>
+    <script type="text/javascript" src="lib/apiGatewayCore/simpleHttpClient.js"></script>
+    <script type="text/javascript" src="lib/apiGatewayCore/utils.js"></script>
+    <script type="text/javascript" src="apigClient.js"></script>
+    
+    <script>
+        var apigClient = apigClientFactory.newClient({});
+    </script>
+    <script type="text/javascript">
+    window.SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+    const synth = window.speechSynthesis;
+    const recognition = new SpeechRecognition();
+    const icon = document.querySelector('i.fa.fa-microphone')
+    
+
+
+    //preview imag
+    function preview() {
+        frame.src=URL.createObjectURL(event.target.files[0]);
+    }
+        
+       
+    // upload photos
+    $(document).ready(function(){
+    
+        $("#upload").click(function(){
+            console.log("uploading!")
+            const image_input = document.getElementById("image_input");
+            var files = image_input.files[0];
+  
+            console.log(files)
+            console.log(files.type)
+            console.log(files.name)
+            
+            upload(files);
+        });
+
+        // after clcik the search button, show the search result
+        $('#search').click(function(){
+            console.log("searching!");
+            const query = document.getElementById("inputbox");
+            params = {q: query.value};
+            console.log(query.value);
+
+            search();
+        
+        });
+    });
+
+
+
+    function getBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => {
+                let encoded = reader.result.toString().replace(/^data:(.*,)?/, '');
+                if ((encoded.length % 4) > 0) {
+                    encoded += '='.repeat(4 - (encoded.length % 4));
+                }
+                resolve(encoded); // This should come after the padding logic
+            };
+            reader.onerror = error => reject(error);
+        });
+    }
+
+    async function upload(file) { // 'async' keyword added here
+        const labels = document.getElementById("labelbox").value; 
+        console.log("Labels: ");
+        console.log(labels);
+        const url = `https://ravijio721.execute-api.us-east-1.amazonaws.com/test-new/upload/6998-photos-b2/${file.name}`;
+
+        const Headers = {
+            "x-api-key": "2DQvMEHMXd4kpEP1Oaih83fpS3H6sMska5laGteK",
+            "x-amz-meta-customLabels": labels,
+            "Content-Type": "text/base64",
+            'Bucket': '6998-photos-b2',
+            'Access-Control-Allow-Origin': '*'
+        }
+
+
+            const base64EncodedFile = await getBase64(file); // 'await' used inside an 'async' function
+
+            // Options for the PUT request
+            const requestOptions = {
+                method: 'PUT',
+                body: base64EncodedFile, 
+                headers: Headers,
+                redirect: 'follow'
+            };
+            fetch(url, requestOptions)
+                .then(response => response.text())
+                .then(result => console.log(result))
+                .catch(error => console.log('error', error));
+
+            $(this).parent(".pip").remove();
+            console.log("check delete")
+
+    }
+async function search() {
+    var searchTerm = document.getElementById("inputbox").value;
+    var apigClient = apigClientFactory.newClient({
+        apiKey: '2DQvMEHMXd4kpEP1Oaih83fpS3H6sMska5laGteK'
+    });
+    var params = {
+        q: searchTerm
+    };
+    var body = {};
+    var additionalParams = {};
+
+    apigClient.searchGet(params, body, additionalParams)
+        .then(async function(result) {
+            console.log('Search successful');
+            var response = JSON.parse(result.data.body);
+            console.log("response", response);
+            var imageKeys = response.urls;
+
+            if (!imageKeys || imageKeys.length === 0) {
+                console.log("No photos found");
+                return;
+            }
+
+            var newWindow = window.open();
+            newWindow.document.write('<!DOCTYPE html><html><head><title>Search Results</title>');
+            newWindow.document.write('<script>');
+            newWindow.document.write('function fetchAndDisplayImage(url, elementId) { \
+                fetch(url) \
+                .then(response => response.text()) \
+                .then(base64String => { \
+                    const image = document.getElementById(elementId); \
+                    image.src = "data:image/jpeg;base64," + base64String; \
+                }) \
+                .catch(error => console.error("Error fetching the base64 string:", error)); \
+            }');
+            newWindow.document.write('<\/script></head><body>');
+            newWindow.document.write('<h1>Search Results</h1>');
+
+            imageKeys.forEach((url, index) => {
+                newWindow.document.write('<img id="base64image' + index + '" alt="Base64 Image"><br>');
+                newWindow.document.write('<script>fetchAndDisplayImage("' + url + '", "base64image' + index + '");<\/script>');
+            });
+
+            newWindow.document.write('</body></html>');
+            newWindow.document.close();
+        })
+        .catch(function(result) {
+            console.log("Error in search");
+            console.log(result);
+        });
+}
+
+
+//     async function search() {
+//     var searchTerm = document.getElementById("inputbox").value;
+//     var apigClient = apigClientFactory.newClient({
+//         apiKey: '2DQvMEHMXd4kpEP1Oaih83fpS3H6sMska5laGteK'
+//     });
+//     var params = {
+//         q: searchTerm
+//     };
+//     var body = {};
+//     var additionalParams = {};
+
+//     apigClient.searchGet(params, body, additionalParams)
+//         .then(async function(result) {
+//             console.log('Search successful');
+//             var response = JSON.parse(result.data.body);
+//             console.log("response", response);
+//             var imageKeys = response.urls;
+
+//             if (!imageKeys || imageKeys.length === 0) {
+//                 console.log("No photos found");
+//                 return;
+//             }
+
+//             var newWindow = window.open();
+//             newWindow.document.write('<!DOCTYPE html><html><head><title>Search Results</title></head><body>');
+//             newWindow.document.write('<h1>Search Results</h1>');
+
+//             imageKeys.forEach((url, index) => {
+//                 newWindow.document.write('<img id="base64image' + index + '" alt="Base64 Image"><br>');
+//                 newWindow.document.write('<script>');
+//                 newWindow.document.write('function fetchAndDisplayImage(url) { \
+//                     fetch(url) \
+//                     .then(response => response.text()) \
+//                     .then(base64String => { \
+//                             const image = document.getElementById("base64image"); \
+//                             image.src = "data:image/jpeg;base64," + base64String;\
+//                         }) \
+//                     })) \
+//                     .catch(error => console.error("Error fetching the base64 string:", error));\
+//                 }');
+//             });
+//             newWindow.document.write('<\/script>');
+//             newWindow.document.write('</body></html>');
+
+//             newWindow.document.close();
+//         })
+//         .catch(function(result) {
+//             console.log("Error in search");
+//             console.log(result);
+//         });
+// }
+
+
+
+    function searchFromVoice(){
+        console.log("speak search start")
+        recognition.start()
+        recognition.onresult = (event) => {
+            const speechToText = event.results[0][0].transcript;
+            console.log(speechToText)
+
+        var apigClient = apigClientFactory.newClient({
+            apiKey: '2DQvMEHMXd4kpEP1Oaih83fpS3H6sMska5laGteK'
+        });
+        var params = {
+            q: speechToText
+        };
+        var body = {
+            
+        };
+
+        var additionalParams = {
+        };
+
+        console.log(speechToText);
+        apigClient.searchGet(params, body, additionalParams)
+        .then(function(result){
+            console.log('success OK');
+            console.log(result)
+            var photos = result.data.body.results;
+            console.log("Photos: ");
+            console.log(photos);
+            var container = document.getElementById("photos");
+
+            for (var i=0, len = photos.length; i < len; ++i) {
+                var img = new Image();
+                img.src = photos[i].url;
+                container.appendChild(img);
+            }
+        })
+        .catch( function(result){
+                console.log("cur")
+                console.log(result.data);})
+
+    }
+
+}
+        
+    </script>
+
+
+    <style>
+    #top{
+        font-size: 24px;
+        font-weight: bold;
+        color: red;
+        margin-left: 10pt;
+    }
+
+    #search-top{
+        margin-top: 35px;
+        margin-left: 30px;
+        font-size: 20px;
+    }
+
+    #inputbox{
+        float: left;
+        width: 30%; 
+        height: 30px;
+    }
+
+    #search{
+        float: left;
+        margin-left: 10px;
+    }
+
+    .preview{
+        width: 100px;
+        height: 100px;
+        border: 1px solid black;
+        margin: 0 auto;
+        background: white;
+    }
+
+    .container{
+        margin-top: 15px;
+    }
+
+    .p1{
+        margin-top: 5px;
+    }
+    
+    .img-responsive {
+    max-width: 100%; /* Maximum width */
+    max-height: 400px; /* Maximum height */
+    height: auto; /* Maintain aspect ratio */
+    display: block; /* Display block to avoid inline spacing */
+    margin: 0 auto; /* Center the image */
+    }
+
+
+
+</style>
+
+<body>
+    <div id = "top">
+        Welcome to Really Super Awesome Photo Album !
+    </div>
+    <div id="search-top"> 
+        <div id="container1"> 
+            <input type="text" id="inputbox" placeholder="Search..."/> 
+            <button id="search" class="btn btn-primary" type="button">Search</button> 
+            <span> &nbsp&nbsp&nbsp  </span>
+            <button id="speak_search" class="btn btn-primary" onclick="searchFromVoice()">Speak to search</button>
+            <br>
+        </div>      
+    </div>
+
+    <div class="container">
+        <form method="post" action="" enctype="multipart/form-data" id="myform">
+            <input type="text" id="labelbox" placeholder="Custom Labels..."/>  <br>
+            <input type="file" onchange="preview()" id="image_input" accept="image/jpeg, image/png">
+            <input type="button" class="button" value="Upload" id="upload"> <br>
+            <img id="frame" class = "p1" src="" width="150px" height="150px"/>   
+        </form>
+    </div>
+    <div>
+        <table width="100%" style="height: 100%;" >
+            <tr>
+                <td><p id="photos" ></td>
+                <td><p id="contacts" ></td>
+            </tr>
+          </table>
+    </div>
+
+    <div id="div"></div>
+    <div id="div1"></div>
+
+
+</body>
