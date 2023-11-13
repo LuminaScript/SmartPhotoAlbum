@@ -1,0 +1,72 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: P1
+Resources:
+  A3b1website:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: "a3b1website"
+  A3b2photostore:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: "a3b2photostore" 
+  IndexPhotosLambda:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: index-photos.lambda_handler
+      CodeUri:
+        Bucket: cf-templates-13tt5riuglypn-us-east-1
+        Key: index-photos.zip
+      Runtime: python3.9
+      Role: 'arn:aws:iam::726664406105:role/service-role/index-photos-role-lmdgm3ak'
+      Environment:
+        Variables:
+          REGION: !Ref 'AWS::Region'
+  SearchPhotosLambda: # Corrected the name here from 'SeaechPhotosLambda' to 'SearchPhotosLambda'
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: search-photos.lambda_handler
+      CodeUri:
+        Bucket: cf-templates-13tt5riuglypn-us-east-1
+        Key: search-photos.zip
+      Runtime: python3.9
+      Role: 'arn:aws:iam::726664406105:role/service-role/search-photos-role-lvpzslrw' # Ensure this role exists
+      Environment:
+        Variables:
+          REGION: !Ref 'AWS::Region'
+  OpenSearchDomain:
+    Type: 'AWS::OpenSearchService::Domain'
+    Properties:
+      DomainName: photos-new
+      EngineVersion: OpenSearch_2.3
+      ClusterConfig:
+        InstanceType: t3.small.search
+        InstanceCount: 1
+      EBSOptions:
+        EBSEnabled: true
+        VolumeType: gp3
+        VolumeSize: 100
+        Iops: 3000
+        Throughput: 125
+      NodeToNodeEncryptionOptions:
+        Enabled: true
+      DomainEndpointOptions:
+        EnforceHTTPS: true
+        TLSSecurityPolicy: 'Policy-Min-TLS-1-2-2019-07'
+      AdvancedOptions:
+        'rest.action.multi.allow_explicit_index': 'true'
+        'indices.fielddata.cache.size': '20'
+        'indices.query.bool.max_clause_count': '1024'
+      AccessPolicies:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              AWS: 'arn:aws:iam::726664406105:root'  # Specify the correct principal here
+            Action: 'es:*'
+            Resource: 'arn:aws:es:us-east-1:726664406105:domain/photos/*'
+      EncryptionAtRestOptions:
+        Enabled: true
+        KmsKeyId: 'arn:aws:kms:us-east-1:726664406105:key/f9a776b3-188a-454b-a4fe-d85cdf9f5919'
+
+
