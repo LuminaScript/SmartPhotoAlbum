@@ -168,59 +168,6 @@ async function search() {
 }
 
 
-//     async function search() {
-//     var searchTerm = document.getElementById("inputbox").value;
-//     var apigClient = apigClientFactory.newClient({
-//         apiKey: '2DQvMEHMXd4kpEP1Oaih83fpS3H6sMska5laGteK'
-//     });
-//     var params = {
-//         q: searchTerm
-//     };
-//     var body = {};
-//     var additionalParams = {};
-
-//     apigClient.searchGet(params, body, additionalParams)
-//         .then(async function(result) {
-//             console.log('Search successful');
-//             var response = JSON.parse(result.data.body);
-//             console.log("response", response);
-//             var imageKeys = response.urls;
-
-//             if (!imageKeys || imageKeys.length === 0) {
-//                 console.log("No photos found");
-//                 return;
-//             }
-
-//             var newWindow = window.open();
-//             newWindow.document.write('<!DOCTYPE html><html><head><title>Search Results</title></head><body>');
-//             newWindow.document.write('<h1>Search Results</h1>');
-
-//             imageKeys.forEach((url, index) => {
-//                 newWindow.document.write('<img id="base64image' + index + '" alt="Base64 Image"><br>');
-//                 newWindow.document.write('<script>');
-//                 newWindow.document.write('function fetchAndDisplayImage(url) { \
-//                     fetch(url) \
-//                     .then(response => response.text()) \
-//                     .then(base64String => { \
-//                             const image = document.getElementById("base64image"); \
-//                             image.src = "data:image/jpeg;base64," + base64String;\
-//                         }) \
-//                     })) \
-//                     .catch(error => console.error("Error fetching the base64 string:", error));\
-//                 }');
-//             });
-//             newWindow.document.write('<\/script>');
-//             newWindow.document.write('</body></html>');
-
-//             newWindow.document.close();
-//         })
-//         .catch(function(result) {
-//             console.log("Error in search");
-//             console.log(result);
-//         });
-// }
-
-
 
     function searchFromVoice(){
         console.log("speak search start")
